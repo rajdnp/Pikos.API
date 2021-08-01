@@ -15,10 +15,9 @@ namespace Pikos.Models.Entities
         public string Name { get; set; }
         public string UserName { get; set; }
         public string Email { get; set; }
-        [JsonIgnore]
         public string Password { get; set; }
 
-        [JsonIgnore]
+        public int RefreshTokenId { get; set; }
         public List<RefreshToken> RefreshTokens { get; set; }
     }
 }

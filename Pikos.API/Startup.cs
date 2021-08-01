@@ -79,7 +79,6 @@ namespace Pikos.API
             collection.AddScoped<IUnitOfWork, UnitOfWork>();
             collection.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             collection.AddScoped<IUserRepository, UserRepository>();
-            collection.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             collection.AddScoped<IAccountService, AccountService>();
         }
 

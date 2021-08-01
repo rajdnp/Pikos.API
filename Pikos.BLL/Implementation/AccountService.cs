@@ -14,6 +14,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using static Pikos.Models.DTOs.SignInDtos;
 using static Pikos.Models.DTOs.SignUpDtos;
+using static Pikos.Models.DTOs.AccountDtos;
 
 namespace Pikos.BLL.Implementation
 {
@@ -47,9 +48,65 @@ namespace Pikos.BLL.Implementation
             {
                 UserId = user.Id.ToString(),
                 Token = jwtToken,
-                UserName = user.UserName ?? user.Email
+                UserName = user.UserName ?? user.Email,
+                RefreshToken = refreshToken.Token
             };
 
+        }
+
+        public async Task<SignInResponse> RefreshToken(TokenModel model)
+        {
+            var users = await userRepository.GetAll();
+            var user  = users.SingleOrDefault(u => u.RefreshTokens.Any(x => x.Token == model.Token));
+
+            // return null if no user found with token
+            if (user == null) return null;
+
+            var refreshToken = user.RefreshTokens.Single(x => x.Token == model.Token);
+
+            // return null if token is no longer active
+            if (!refreshToken.IsActive) return null;
+
+            // replace old refresh token with a new one and save
+            var newRefreshToken = GenerateRefreshToken(model.IpAddress);
+
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = model.IpAddress;
+            refreshToken.ReplacedByToken = model.Token;
+
+            await unitOfWork.Complete();
+
+            // generate new jwt
+            var jwtToken = GenerateJwtToken(user);
+
+            return new SignInResponse { UserId = user.Id.ToString(), Token = jwtToken, RefreshToken = newRefreshToken.Token, UserName = user.UserName };
+        }
+
+        public async Task<bool> RevokeToken(TokenModel model)
+        {
+            var users = await userRepository.GetAll();
+            var user = users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == model.Token));
+
+            // return false if no user found with token
+            if (user == null) return false;
+
+            var refreshToken = user.RefreshTokens.Single(x => x.Token == model.Token);
+
+            // return false if token is not active
+            if (!refreshToken.IsActive) return false;
+
+            // revoke token and save
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = model.IpAddress;
+
+            var result = await unitOfWork.Complete();
+            
+            if(result > 0)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public async Task<bool> SignUp(SignUpRequest model)
@@ -57,6 +114,7 @@ namespace Pikos.BLL.Implementation
             var user = new User { Email = model.Email, Name = model.FirstName + model.LastName, Password = model.Password, UserName = model.UserName };
             userRepository.Add(user);
             var result = await unitOfWork.Complete();
+
             if(result > 0)
             {
                 return true;
