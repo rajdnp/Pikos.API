@@ -21,4 +21,8 @@
     <ProjectReference Include="..\Pikos.Helpers\Pikos.Helpers.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Attributes\" />
+  </ItemGroup>
+
 </Project>
